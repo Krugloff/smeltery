@@ -8,15 +8,11 @@
 
 Add this line to your application's Gemfile:
 
-    gem 'smeltery'
+    gem 'smeltery', git: 'http://github.com/Krugloff/smeltery.git'
 
 And then execute:
 
     $ bundle
-
-Or install it yourself as:
-
-    $ gem install smeltery
 
 ## Usage
 

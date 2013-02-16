@@ -21,7 +21,7 @@ group :assets do
 end
 
 group :test do
-  gem 'smeltery', path: 'lib/smeltery'
+  gem 'smeltery', git: 'http://github.com/Krugloff/smeltery.git'
   gem 'ruby-prof'
 end
 
