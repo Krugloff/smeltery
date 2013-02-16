@@ -6,14 +6,9 @@ module Smeltery::Furnace
 
   def self.models(ingots)
     ingots.map! do |ingot|
-      case
-      when (defined? Model) && ingot.is_a?(Model)
-        ingot
-      when ingot.respond_to?(:to_model)
-        ingot.to_model
-      else
+      (defined? Model) && ingot.is_a?(Model) ?
+        ingot :
         Model.create( ingots.model_klass, ingot )
-      end
     end
   end
 

@@ -3,44 +3,43 @@
 # Представление тестовых данных в виде экземпляра модели. Сохранение экземпляров выполняется отдельно.
 class Smeltery::Furnace::Model
   def self.create(klass, ingot)
-    new(klass, ingot).tap { |form| form.cool }
+    new(klass, ingot).cool
   end
 
   def initialize(klass, ingot)
     @label = ingot.label
     @ingot = ingot
     @klass = klass
-    @value = @klass.new @ingot.value, without_protection: true
+
+    @model = @ingot.respond_to?(:to_model) ?
+      @ingot.to_model :
+      @klass.new( @ingot.value, without_protection: true )
   end
 
-  # Для данных, не прошедших проверку, значением будет экземпляр модели.
   attr_reader :label, :value
 
-  # Сохранение модели.
-  #
-  # ToDo: сохранение модели таким образом приводит к созданию транзакций. Чтобы избежать этого надо сохранять модель без участия метода save, а с помощью insert_fixture:
-  # + необходимо проверять соответствие модели тербованиям;
-  # + это также позволит игнорировать обработку жизненного цикла.
+  # Сохранение модели. Тестовые данные, не прошедшие проверку, будут представлены не сохраненным экземпляром модели.
+  # ToDo:
+  # + этот метод потенциально опасен при параллельном выполнении. Для улучшения ситуации следует самостоятельно вычислять идентификатор записи;
+  # + стоит добавить заполнение столбцов 'created_on' и 'updated_on' (см. rails fixtures).
   def cool
-    # return if @value.invalid?
+    return @value = @model if @model.invalid?
 
-    # now = (@klass.default_timezone == :utc ? Time.now.utc : Time.now)
-    #   .to_s(:db)
-    # columns = @value.attributes
-    # columns['created_at'] = now unless columns['created_at']
-    # columns['updated_at'] = now unless columns['updated_at']
+    now = (@klass.default_timezone == :utc ? Time.now.utc : Time.now)
+      .to_s(:db)
+    columns = @model.attributes
+    columns['created_at'] = now unless columns['created_at']
+    columns['updated_at'] = now unless columns['updated_at']
 
-    # @klass.connection.insert_fixture columns, @klass.table_name
-    # @value = @klass.last
-    @value.save
+    @klass.connection.insert_fixture columns, @klass.table_name
+    @value = @klass.last # danger!
+    # @value.save
   end
 
   # Удаление модели.
-  #
-  # ToDo: возможно стоит определить собственный метод для возвращаемого объекта, с помощью которого будут кешированы модели?
   def to_ingot
     @value.delete
-    @ingot #.tap { |ingot| ingot.define_singleton_method(:to_model) {@model} }
+    @ingot.tap { |ingot| ingot.define_singleton_method(:to_model) {@model} }
   end
 
   def inspect
