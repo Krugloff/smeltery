@@ -47,6 +47,15 @@ class UserTest < ActiveSupport::TestCase
     assert users('hacker').invalid?
   end
 
+  test 'delete all models' do
+    models 'users'
+    assert User.count > 0
+
+    models(nil)
+    message = "Users: " + User.count.to_s
+    assert( User.count == 0, message )
+  end
+
   # test 'associations' do
     
   # end

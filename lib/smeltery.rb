@@ -42,6 +42,7 @@ module Smeltery
     # + повышение производительности создания моделей;
     # + на уровне класса выполнять только создание моделей, сохранение моделей выполнять отдельно для каждого теста. Это позволит быстрее отменять сделанные изменения в случае использования транзакций? или просто кешировать модели?
     def models(*names)
+      return remove_all_models if names.include? nil
       setup { models(*names) }
       create_models(names)
     end
@@ -51,10 +52,15 @@ module Smeltery
       storages(names).map! { |ingots| Smeltery::Furnace.models(ingots) }
     end
 
+    def remove_all_models
+      Storage.cache.map! { |models| Smeltery::Furnace.ingots(models) }
+    end
+
     # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется на все тесты.
     #
     # ToDo: nil для удаления предыдущих тестовых данных.
     def ingots(*names)
+      return remove_all_ingots if names.include? nil
       setup { ingots(*names) }
       create_ingots(names)
     end
@@ -62,6 +68,11 @@ module Smeltery
     # For DRY.
     def create_ingots(names)
       storages(names).map! { |models| Smeltery::Furnace.ingots models }
+    end
+
+    def remove_all_ingots
+      remove_all_models
+      Storage.cache.clear
     end
 
     # Вынести в отдельный модуль?
@@ -107,11 +118,13 @@ module Smeltery
 
   # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется только на текущий тест.
   def ingots(*names)
+    return remove_all_ingots if names.include? nil
     self.class.create_ingots(names)
   end
 
   # Сохранение тестовых данных в виде моделей. Распространяется только на текущий тест.
   def models(*names)
+    return remove_all_models if names.include? nil
     self.class.create_models(names)
   end
 
@@ -122,6 +135,10 @@ module Smeltery
   # Недостатки:
   # + Фактически требуемые модели создаются заново для каждого теста. Необходимо увеличить скорость создания моделей.
   def remove_all_models
-    Storage.cache.map! { |storage| Smeltery::Furnace.ingots storage }
+    self.class.remove_all_models
+  end
+
+  def remove_all_ingots
+    self.class.remove_all_ingots
   end
 end

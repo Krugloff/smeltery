@@ -7,19 +7,16 @@ require 'active_support/core_ext/class'
 class Smeltery::Storage < Array
   autoload 'Ingot', 'smeltery/storage/ingot'
 
+  cattr_accessor('cache') { Array.new }
+
   # Кеширование уже обработанных хранилищ.
   def self.find_or_create(relative_path, path)
-    @cache ||= []
-    cache = @cache.find { |storage| storage.path == relative_path }
+    cache = @@cache.find { |storage| storage.path == relative_path }
     unless cache
       cache = new( relative_path, File.read(path) ).ingots
-      @cache << cache
+      @@cache << cache
     end
     cache
-  end
-
-  def self.cache
-    @cache || []
   end
 
   def initialize(path, content)
