@@ -3,7 +3,7 @@
 # Представление тестовых данных в виде экземпляра модели. Сохранение экземпляров выполняется отдельно.
 class Smeltery::Furnace::Model
   def self.create(klass, ingot)
-    new(klass, ingot).cool
+    new(klass, ingot).tap { |model| model.cool }
   end
 
   def initialize(klass, ingot)
@@ -38,8 +38,9 @@ class Smeltery::Furnace::Model
 
   # Удаление модели.
   def to_ingot
-    @value.delete
-    @ingot.tap { |ingot| ingot.define_singleton_method(:to_model) {@model} }
+    @value.delete if @value
+    model = @model
+    @ingot.tap { |ingot| ingot.define_singleton_method(:to_model) {model} }
   end
 
   def inspect
