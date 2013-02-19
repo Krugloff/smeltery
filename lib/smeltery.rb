@@ -6,6 +6,7 @@ require 'smeltery/railtie' if defined?(Rails)
 require 'active_support/concern'
 require 'active_support/core_ext/class'
 require 'active_support/core_ext/object'
+require 'active_support/hash_with_indifferent_access'
 
 =begin
   Управление созданием моделей на основе тестовых данных.
@@ -30,54 +31,30 @@ module Smeltery
   extend ActiveSupport::Concern
 
   included do
-    class_attribute :ingots_path # каталог для хранения тестовых данных.
+    # ToDo: rails fixtures
+    # + table_names
+    # + class_names
+
+    cattr_accessor :ingots_path # каталог для хранения тестовых данных.
+    cattr_accessor(:invoice) { HashWithIndifferentAccess.new }
+
+    setup :handle_invoice
     teardown :remove_all_models # если не используются транзакции?
   end
 
   module ClassMethods
-    # Сохранение тестовых данных в виде моделей. Распространяется на все тесты.
-    #
-    # ToDo:
-    # + nil для удаления предыдущих тестовых данных;
-    # + повышение производительности создания моделей;
-    # + на уровне класса выполнять только создание моделей, сохранение моделей выполнять отдельно для каждого теста. Это позволит быстрее отменять сделанные изменения в случае использования транзакций? или просто кешировать модели?
+    # Сохранение тестовых данных в виде моделей. Распространяется на все тесты. (см. handle_invoice)
     def models(*names)
-      return remove_all_models if names.include? nil
-      setup { models(*names) }
-      create_models(names)
+      names.each { |name| invoice[name] = proc { models(name) } }
     end
 
-    # For DRY.
-    def create_models(names)
-      storages(names).map! { |ingots| Smeltery::Furnace.models(ingots) }
-    end
-
-    def remove_all_models
-      Storage.cache.map! { |models| Smeltery::Furnace.ingots(models) }
-    end
-
-    # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется на все тесты.
-    #
-    # ToDo: nil для удаления предыдущих тестовых данных.
+    # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется на все тесты (см. handle_invoice).
     def ingots(*names)
-      return remove_all_ingots if names.include? nil
-      setup { ingots(*names) }
-      create_ingots(names)
+      names.each { |name| invoice[name] = proc { ingots(name) } }
     end
 
-    # For DRY.
-    def create_ingots(names)
-      storages(names).map! { |models| Smeltery::Furnace.ingots models }
-    end
-
-    def remove_all_ingots
-      remove_all_models
-      Storage.cache.clear
-    end
-
-    # Вынести в отдельный модуль?
     # Минимальная совместимость с rails fixtures.
-    alias :fixtures :models
+    alias fixtures models
 
     def fixture_path=(path)
       self.ingots_path = path.chomp '/'
@@ -87,58 +64,82 @@ module Smeltery
       self.ingots_path
     end
     #####
-
-    # Поиск и извлечение тестовых данных.
-    #
-    # ToDo: вызов ошибки, если файл не найден.
-    def storages(names)
-      names = names.map(&:to_s)
-
-      Dir["#{ingots_path}/**/*.rb"].map do |path|
-        unless names.include? 'all'
-          next unless names.any? { |name| path.include? name }
-        end
-
-        relative_path = path.from( ingots_path.length.next )
-                            .to( -File.extname(path).length.next )
-
-        storage = Smeltery::Storage.find_or_create relative_path, path
-        define_accessor storage unless method_defined? storage.type
-        storage
-      end
-    end
-
-    # Идентификатор метода вычисляется с помощью имени файла.
-    def define_accessor(storage)
-      define_method(storage.type) { |label| storage.value(label) }
-    end
-
-
   end
 
   # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется только на текущий тест.
   def ingots(*names)
-    return remove_all_ingots if names.include? nil
-    self.class.create_ingots(names)
+    return _remove_all_ingots if names.include? nil
+    _storages(names).map! { |models| Furnace.ingots(models) }
+
+    rescue NoMethodError => method
+      _association method
   end
 
   # Сохранение тестовых данных в виде моделей. Распространяется только на текущий тест.
   def models(*names)
     return remove_all_models if names.include? nil
-    self.class.create_models(names)
+    _storages(names).map! { |ingots| Furnace.models(ingots) }
+
+    rescue NoMethodError => method
+      _association method
   end
 
-  # Используется для отмены изменений, сделанных тестом. Стоит заметить, что добавление новых тестовых данных не отменяется - с этого момента они будут существовать для всех тестов (в виде ассоциативных массивов).
-  #
-  # Достоинства:
-  # + довольно легко удалять любые изменения.
-  # Недостатки:
-  # + Фактически требуемые модели создаются заново для каждого теста. Необходимо увеличить скорость создания моделей.
-  def remove_all_models
-    self.class.remove_all_models
-  end
+  alias fixtures models
 
-  def remove_all_ingots
-    self.class.remove_all_ingots
-  end
+  private
+
+    # Инициализация требуемых тестовых данных.
+    def handle_invoice
+      invoice.values.each(&:call)
+    end
+
+    # Используется для отмены изменений, сделанных тестом. Стоит заметить, что добавление новых тестовых данных не отменяется - с этого момента они будут существовать для всех тестов (в виде ассоциативных массивов).
+    #
+    # Достоинства:
+    # + довольно легко удалять любые изменения.
+    # Недостатки:
+    # + Фактически требуемые модели создаются заново для каждого теста. Необходимо увеличить скорость создания моделей.
+    def remove_all_models
+      Storage.cache.map! { |models| Furnace.ingots(models) }
+    end
+
+    def _remove_all_ingots
+      remove_all_models
+      Storage.cache.clear
+    end
+
+    def _storages(names)
+      names = names.map(&:to_s)
+
+      Dir["#{ingots_path}/**/*.rb"].map do |path|
+        # Delete this line?
+        next nil unless File.file? path
+
+        relative_path = path.from( ingots_path.length.next )
+                            .to( -File.extname(path).length.next )
+
+        unless names.include? 'all'
+          # ToDo: File.basename(relative_path, File.extname(relative_path)) == name
+          next nil unless names.any? { |name| path.include? name }
+        end
+
+        storage = Storage.find_or_create relative_path, path
+        _define_accessor storage unless respond_to? storage.type
+        storage
+      end.compact
+    end
+
+    # Идентификатор метода вычисляется с помощью расположения файла.
+    def _define_accessor(storage)
+      define_singleton_method(storage.type) { |label| storage.value(label) }
+    end
+
+    # Инициализация тестовых данных, необходимых для реализации связей между моделями. Для реализаци связи в любом случае будут созданы экземпляры модели (даже для тестовых данных, представленных в виде ассоциативного массива). Это поведение может измениться в дальнейшем.
+    def _association(method)
+      name = method.name.to_s
+      while models(name).empty? && name.include?('_')
+        name = name.split('_', 2).last
+      end
+      self.send(method.name, method.args.first)
+    end
 end

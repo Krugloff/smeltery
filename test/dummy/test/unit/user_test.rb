@@ -4,6 +4,7 @@ class UserTest < ActiveSupport::TestCase
   test 'without test data' do
     message = "Users: " + User.count.to_s
     assert( User.count == 0 , message )
+    assert_raise(NoMethodError) { users('krugloff') }
   end
 
   # Если не отменить изменения, сделанные в этом тесте, то предыдущий тест будет провален.
