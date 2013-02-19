@@ -107,24 +107,23 @@ module Smeltery
     end
 
     def _storages(names)
-      names = names.map(&:to_s)
-
-      Dir["#{ingots_path}/**/*.rb"].map do |path|
-        # Delete this line?
-        next nil unless File.file? path
-
+      _files(names).map do |path|
         relative_path = path.from( ingots_path.length.next )
                             .to( -File.extname(path).length.next )
-
-        unless names.include? 'all'
-          # ToDo: File.basename(relative_path, File.extname(relative_path)) == name
-          next nil unless names.any? { |name| path.include? name }
-        end
 
         storage = Storage.find_or_create relative_path, path
         _define_accessor storage unless respond_to? storage.type
         storage
-      end.compact
+      end
+    end
+
+    def _files(names)
+      names = names.map(&:to_s)
+      if names.include?('all')
+        Dir["#{ingots_path}/**/*.rb"]
+      else
+        names.map { |name| Dir["#{ingots_path}/**/#{name}.rb"] }.flatten
+      end
     end
 
     # Идентификатор метода вычисляется с помощью расположения файла.
@@ -135,6 +134,8 @@ module Smeltery
     # Инициализация тестовых данных, необходимых для реализации связей между моделями. Для реализаци связи в любом случае будут созданы экземпляры модели (даже для тестовых данных, представленных в виде ассоциативного массива). Это поведение может измениться в дальнейшем.
     def _association(method)
       name = method.name.to_s
+
+      # Поиск файла, соотвествующего вызываемому методу. Например `.admin_users` может ссылаться на `admin_users.rb` или `admin/users.rb`.
       while models(name).empty? && name.include?('_')
         name = name.split('_', 2).last
       end
