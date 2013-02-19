@@ -7,12 +7,12 @@ class UserTest < ActiveSupport::TestCase
     assert_raise(NoMethodError) { users('krugloff') }
   end
 
-  # Если не отменить изменения, сделанные в этом тесте, то предыдущий тест будет провален.
-  # test 'save new user' do
-  #   user = User.new name: 'mike'
-  #   user.password = 'dreams'
-  #   user.save
-  # end
+  # Если не отменить изменения, сделанные в этом тесте, то предыдущий тест будет провален. Тест используется для проверки работы транзакций.
+  test 'save new user' do
+    user = User.new name: 'mike'
+    user.password = 'dreams'
+    user.save
+  end
 
   test 'create ingots' do
     ingots 'users'

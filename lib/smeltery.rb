@@ -1,7 +1,8 @@
 #encoding: utf-8
 
 require 'smeltery/version'
-require 'smeltery/railtie' if defined?(Rails)
+require 'smeltery/rails/railtie' if defined?(Rails)
+require 'smeltery/rails/transactional_tests' if defined?(ActiveRecord)
 
 require 'active_support/concern'
 require 'active_support/core_ext/class'
@@ -35,11 +36,13 @@ module Smeltery
     # + table_names
     # + class_names
 
+    include TransactionalTests
+
     cattr_accessor :ingots_path # каталог для хранения тестовых данных.
     cattr_accessor(:invoice) { HashWithIndifferentAccess.new }
 
     setup :handle_invoice
-    teardown :remove_all_models # если не используются транзакции?
+    teardown :remove_all_models
   end
 
   module ClassMethods
@@ -93,12 +96,7 @@ module Smeltery
       invoice.values.each(&:call)
     end
 
-    # Используется для отмены изменений, сделанных тестом. Стоит заметить, что добавление новых тестовых данных не отменяется - с этого момента они будут существовать для всех тестов (в виде ассоциативных массивов).
-    #
-    # Достоинства:
-    # + довольно легко удалять любые изменения.
-    # Недостатки:
-    # + Фактически требуемые модели создаются заново для каждого теста. Необходимо увеличить скорость создания моделей.
+    # Отмена изменений тестовых данных. В данном случае скорость принесена в жертву удобству.
     def remove_all_models
       Storage.cache.map! { |models| Furnace.ingots(models) }
     end
