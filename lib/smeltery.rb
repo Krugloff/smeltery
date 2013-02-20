@@ -5,8 +5,7 @@ require 'smeltery/rails/railtie' if defined?(Rails)
 require 'smeltery/rails/transactional_tests' if defined?(ActiveRecord)
 
 require 'active_support/concern'
-require 'active_support/core_ext/class'
-require 'active_support/core_ext/object'
+require 'active_support/core_ext/class/attribute_accessors'
 require 'active_support/hash_with_indifferent_access'
 
 =begin
@@ -72,7 +71,7 @@ module Smeltery
   # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется только на текущий тест.
   def ingots(*names)
     return _remove_all_ingots if names.include? nil
-    _storages(names).map! { |models| Furnace.ingots(models) }
+    _storages(names).each { |models| Furnace.ingots(models) }
 
     rescue NoMethodError => method
       _association method
@@ -81,7 +80,7 @@ module Smeltery
   # Сохранение тестовых данных в виде моделей. Распространяется только на текущий тест.
   def models(*names)
     return remove_all_models if names.include? nil
-    _storages(names).map! { |ingots| Furnace.models(ingots) }
+    _storages(names).each { |ingots| Furnace.models(ingots) }
 
     rescue NoMethodError => method
       _association method
@@ -98,7 +97,7 @@ module Smeltery
 
     # Отмена изменений тестовых данных. В данном случае скорость принесена в жертву удобству.
     def remove_all_models
-      Storage.cache.map! { |models| Furnace.ingots(models) }
+      Storage.cache.each { |models| Furnace.ingots(models) }
     end
 
     def _remove_all_ingots
@@ -119,11 +118,8 @@ module Smeltery
 
     def _files(names)
       names = names.map(&:to_s)
-      if names.include?('all')
-        Dir["#{ingots_path}/**/*.rb"]
-      else
-        names.map { |name| Dir["#{ingots_path}/**/#{name}.rb"] }.flatten
-      end
+      names = names.include?('all') ? '*' : names.join(',')
+      Dir["#{ingots_path}/**/#{names}.rb"]
     end
 
     # Идентификатор метода вычисляется с помощью расположения файла.

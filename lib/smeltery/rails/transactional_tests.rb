@@ -3,6 +3,8 @@
 require 'active_record'
 require 'active_support/concern'
 
+require 'active_support/core_ext/class/attribute'
+
 =begin
   Выполнение каждого теста в теле отдельной транзакции.
 
