@@ -2,6 +2,8 @@ require 'test_helper'
 
 class CommentTest < ActiveSupport::TestCase
   test "belongs to user" do
-    assert_difference( "User.count", 1 ) { models 'comments' }
+    models('comments')
+    models('users')
+    assert comments('welcome').user == users('krugloff')
   end
 end

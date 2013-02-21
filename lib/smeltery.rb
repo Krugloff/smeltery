@@ -3,6 +3,7 @@
 require 'smeltery/version'
 require 'smeltery/rails/railtie' if defined?(Rails)
 require 'smeltery/rails/transactional_tests' if defined?(ActiveRecord)
+require 'smeltery/ext/module'
 
 require 'active_support/concern'
 require 'active_support/core_ext/class/attribute_accessors'
@@ -28,6 +29,9 @@ module Smeltery
   autoload 'Storage', 'smeltery/storage'
   autoload 'Furnace', 'smeltery/furnace'
 
+  # для обработки связей с другими моделями.
+  autoload 'Module', 'smeltery/ext/module'
+
   extend ActiveSupport::Concern
 
   included do
@@ -37,56 +41,47 @@ module Smeltery
 
     include TransactionalTests
 
-    cattr_accessor :ingots_path # каталог для хранения тестовых данных.
-    cattr_accessor(:invoice) { HashWithIndifferentAccess.new }
-
     setup :handle_invoice
     teardown :remove_all_models
   end
 
   module ClassMethods
-    # Сохранение тестовых данных в виде моделей. Распространяется на все тесты. (см. handle_invoice)
-    def models(*names)
-      names.each { |name| invoice[name] = proc { models(name) } }
+    def ingots(*names)
+      Smeltery.required_ingots(*names)
     end
 
-    # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется на все тесты (см. handle_invoice).
-    def ingots(*names)
-      names.each { |name| invoice[name] = proc { ingots(name) } }
+    def models(*names)
+      Smeltery.required_models(*names)
+    end
+
+    def ingots_path=(path)
+      Smeltery.ingots_path = path.chomp '/'
+    end
+
+    def ingots_path
+      Smeltery.ingots_path
     end
 
     # Минимальная совместимость с rails fixtures.
     alias fixtures models
-
-    def fixture_path=(path)
-      self.ingots_path = path.chomp '/'
-    end
-
-    def fixture_path
-      self.ingots_path
-    end
+    alias fixture_path= ingots_path=
+    alias fixture_path ingots_path
     #####
   end
 
-  # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется только на текущий тест.
-  def ingots(*names)
-    return _remove_all_ingots if names.include? nil
-    _storages(names).each { |models| Furnace.ingots(models) }
+  mattr_accessor :ingots_path # каталог для хранения тестовых данных.
+  mattr_accessor(:invoice)
+  self.invoice = HashWithIndifferentAccess.new
 
-    rescue NoMethodError => method
-      _association method
+  # Сохранение тестовых данных в виде моделей. Распространяется на все тесты. (см. handle_invoice)
+  def self.required_models(*names)
+    names.each { |name| invoice[name] = proc { models(name) } }
   end
 
-  # Сохранение тестовых данных в виде моделей. Распространяется только на текущий тест.
-  def models(*names)
-    return remove_all_models if names.include? nil
-    _storages(names).each { |ingots| Furnace.models(ingots) }
-
-    rescue NoMethodError => method
-      _association method
+  # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется на все тесты (см. handle_invoice).
+  def self.required_ingots(*names)
+    names.each { |name| invoice[name] = proc { ingots(name) } }
   end
-
-  alias fixtures models
 
   private
 
@@ -94,6 +89,25 @@ module Smeltery
     def handle_invoice
       invoice.values.each(&:call)
     end
+
+    # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется только на текущий тест.
+    def ingots(*names)
+      return _remove_all_ingots if names.include? nil
+      _storages(names).each { |models| Furnace.ingots(models) }
+
+      # rescue NoMethodError => method
+      #   _association method
+    end
+
+    # Сохранение тестовых данных в виде моделей. Распространяется только на текущий тест.
+    def models(*names)
+      return remove_all_models if names.include? nil
+      _storages(names).each { |ingots| Furnace.models(ingots) }
+
+      # rescue NoMethodError => method
+      #   _association method
+    end
+    alias fixtures models
 
     # Отмена изменений тестовых данных. В данном случае скорость принесена в жертву удобству.
     def remove_all_models
@@ -127,14 +141,12 @@ module Smeltery
       define_singleton_method(storage.type) { |label| storage.value(label) }
     end
 
-    # Инициализация тестовых данных, необходимых для реализации связей между моделями. Для реализаци связи в любом случае будут созданы экземпляры модели (даже для тестовых данных, представленных в виде ассоциативного массива). Это поведение может измениться в дальнейшем.
-    def _association(method)
-      name = method.name.to_s
-
-      # Поиск файла, соотвествующего вызываемому методу. Например `.admin_users` может ссылаться на `admin_users.rb` или `admin/users.rb`.
-      while models(name).empty? && name.include?('_')
-        name = name.split('_', 2).last
-      end
-      self.send(method.name, method.args.first)
-    end
+  # Позволяет управлять тестовыми данными непосредственно с помощью модуля. Используется для реализации связей между моделями.
+  module_function 'ingots',
+                  'models',
+                  'remove_all_models',
+                  '_remove_all_ingots',
+                  '_storages',
+                  '_files',
+                  '_define_accessor'
 end

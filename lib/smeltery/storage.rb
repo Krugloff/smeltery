@@ -7,16 +7,21 @@ require 'active_support/core_ext/class/attribute_accessors'
 class Smeltery::Storage < Array
   autoload 'Ingot', 'smeltery/storage/ingot'
 
+  # для обработки связей с другими моделями.
+  # autoload 'Module', 'smeltery/ext/module'
+
   cattr_accessor('cache') { Array.new }
 
   # Кеширование уже обработанных хранилищ.
   def self.find_or_create(relative_path, path)
-    cache = @@cache.find { |storage| storage.path == relative_path }
-    unless cache
-      cache = new( relative_path, File.read(path) ).ingots
-      @@cache << cache
+    a_storage = @@cache.find { |storage| storage.path == relative_path }
+    unless a_storage
+      a_storage = new( relative_path, File.read(path) ).ingots
+      type = a_storage.type
+      define_singleton_method(type) { a_storage } unless respond_to? type
+      @@cache << a_storage
     end
-    cache
+    a_storage
   end
 
   def initialize(path, content)
@@ -35,7 +40,7 @@ class Smeltery::Storage < Array
   # @john     = { name: 'John',
   #               password: 'secure' }
   def ingots
-    ingots = Module.new
+    ingots = Smeltery::Module.new
     ingots.module_eval @content
 
     ingots.instance_variables.each_with_object(self) do |var, buffer|
@@ -53,4 +58,19 @@ class Smeltery::Storage < Array
   def model_klass
     @path.classify.constantize
   end
+
+  # class Ingots < Array
+  #   def initialize(content)
+  #     instance_eval content
+  #     instance_variables.map do |var|
+  #       label = var.to_s.delete '@'
+  #       value = ingots.instance_variable_get(var)
+  #       Ingot.new(label, value)
+  #     end
+  #   end
+
+  #   def method_missing(meth, *args, &blk)
+  #     Storage.send(meth, *args, &blk)
+  #   end
+  # end
 end
