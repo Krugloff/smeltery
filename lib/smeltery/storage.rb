@@ -17,8 +17,8 @@ class Smeltery::Storage < Array
     a_storage = @@cache.find { |storage| storage.path == relative_path }
     unless a_storage
       a_storage = new( relative_path, File.read(path) ).ingots
-      type = a_storage.type
-      define_singleton_method(type) { a_storage } unless respond_to? type
+      # type = a_storage.type
+      # define_singleton_method(type) { a_storage } unless respond_to? type
       @@cache << a_storage
     end
     a_storage
@@ -58,19 +58,4 @@ class Smeltery::Storage < Array
   def model_klass
     @path.classify.constantize
   end
-
-  # class Ingots < Array
-  #   def initialize(content)
-  #     instance_eval content
-  #     instance_variables.map do |var|
-  #       label = var.to_s.delete '@'
-  #       value = ingots.instance_variable_get(var)
-  #       Ingot.new(label, value)
-  #     end
-  #   end
-
-  #   def method_missing(meth, *args, &blk)
-  #     Storage.send(meth, *args, &blk)
-  #   end
-  # end
 end

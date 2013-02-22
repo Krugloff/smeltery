@@ -7,6 +7,7 @@ require 'smeltery/ext/module'
 
 require 'active_support/concern'
 require 'active_support/core_ext/class/attribute_accessors'
+require 'active_support/core_ext/class/attribute'
 require 'active_support/hash_with_indifferent_access'
 
 =begin
@@ -33,79 +34,70 @@ module Smeltery
   autoload 'Module', 'smeltery/ext/module'
 
   extend ActiveSupport::Concern
+  # include TransactionalTests if defined? TransactionalTests
+
+  module ClassMethods
+    # Объявление тестовых данных, необходимых в виде ассоциативных массивов. Распространяется на все тесты. (см. handle_invoice).
+    def ingots(*names)
+      names.each { |name| invoice[name] = proc { ingots(name) } }
+      # Объявлять методы доступа здесь?
+    end
+
+    # Объявление тестовых данных, необходимых в виде моделей. Распространяется на все тесты. (см. handle_invoice).
+    def models(*names)
+      names.each { |name| invoice[name] = proc { models(name) } }
+      # Объявлять методы доступа здесь?
+    end
+
+    # Минимальная совместимость с rails fixtures.
+    alias fixtures models
+
+    def fixture_path=(path)
+      self.ingots_path = path.chomp '/'
+    end
+
+    def fixture_path
+      ingots_path
+    end
+    #####
+  end
 
   included do
     # ToDo: rails fixtures
     # + table_names
     # + class_names
 
-    include TransactionalTests
+    class_attribute :ingots_path
+    self.ingots_path = 'test/ingots'
+
+    class_attribute :invoice
+    self.invoice = HashWithIndifferentAccess.new
 
     setup :handle_invoice
     teardown :remove_all_models
-  end
 
-  module ClassMethods
-    def ingots(*names)
-      Smeltery.required_ingots(*names)
-    end
-
-    def models(*names)
-      Smeltery.required_models(*names)
-    end
-
-    def ingots_path=(path)
-      Smeltery.ingots_path = path.chomp '/'
-    end
-
-    def ingots_path
-      Smeltery.ingots_path
-    end
-
-    # Минимальная совместимость с rails fixtures.
-    alias fixtures models
-    alias fixture_path= ingots_path=
-    alias fixture_path ingots_path
-    #####
-  end
-
-  mattr_accessor :ingots_path # каталог для хранения тестовых данных.
-  mattr_accessor(:invoice)
-  self.invoice = HashWithIndifferentAccess.new
-
-  # Сохранение тестовых данных в виде моделей. Распространяется на все тесты. (см. handle_invoice)
-  def self.required_models(*names)
-    names.each { |name| invoice[name] = proc { models(name) } }
-  end
-
-  # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется на все тесты (см. handle_invoice).
-  def self.required_ingots(*names)
-    names.each { |name| invoice[name] = proc { ingots(name) } }
+    include TransactionalTests if defined? TransactionalTests
   end
 
   private
 
     # Инициализация требуемых тестовых данных.
     def handle_invoice
-      invoice.values.each(&:call)
+      ActiveRecord::Base.logger.debug invoice.to_s
+      invoice.values.each { |task| self.instance_eval task }
     end
 
     # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется только на текущий тест.
     def ingots(*names)
       return _remove_all_ingots if names.include? nil
       _storages(names).each { |models| Furnace.ingots(models) }
-
-      # rescue NoMethodError => method
-      #   _association method
     end
 
     # Сохранение тестовых данных в виде моделей. Распространяется только на текущий тест.
     def models(*names)
+      ActiveRecord::Base.logger.debug 'Models:' + names.join(',')
       return remove_all_models if names.include? nil
       _storages(names).each { |ingots| Furnace.models(ingots) }
-
-      # rescue NoMethodError => method
-      #   _association method
     end
     alias fixtures models
 
@@ -121,6 +113,7 @@ module Smeltery
 
     def _storages(names)
       _files(names).map do |path|
+        ActiveRecord::Base.logger.debug path
         relative_path = path.from( ingots_path.length.next )
                             .to( -File.extname(path).length.next )
 
@@ -132,6 +125,7 @@ module Smeltery
 
     def _files(names)
       names = names.map(&:to_s)
+      ActiveRecord::Base.logger.debug names.join(',')
       names = names.include?('all') ? '*' : names.join(',')
       Dir["#{ingots_path}/**/#{names}.rb"]
     end
@@ -142,11 +136,11 @@ module Smeltery
     end
 
   # Позволяет управлять тестовыми данными непосредственно с помощью модуля. Используется для реализации связей между моделями.
-  module_function 'ingots',
-                  'models',
-                  'remove_all_models',
-                  '_remove_all_ingots',
-                  '_storages',
-                  '_files',
-                  '_define_accessor'
+  # module_function 'ingots',
+  #                 'models',
+  #                 'remove_all_models',
+  #                 '_remove_all_ingots',
+  #                 '_storages',
+  #                 '_files',
+  #                 '_define_accessor'
 end
