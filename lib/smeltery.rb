@@ -6,7 +6,6 @@ require 'smeltery/rails/transactional_tests' if defined?(ActiveRecord)
 require 'smeltery/ext/module'
 
 require 'active_support/concern'
-require 'active_support/core_ext/class/attribute_accessors'
 require 'active_support/core_ext/class/attribute'
 require 'active_support/hash_with_indifferent_access'
 
