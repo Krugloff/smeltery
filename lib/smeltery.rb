@@ -69,10 +69,6 @@ module Smeltery
   end
 
   included do
-    # ToDo: rails fixtures
-    # + table_names
-    # + class_names
-
     class_attribute :ingots_path
     self.ingots_path = 'test/ingots'
 

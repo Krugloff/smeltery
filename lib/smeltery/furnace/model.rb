@@ -19,9 +19,6 @@ class Smeltery::Furnace::Model
   attr_reader :label, :value
 
   # Сохранение модели. Тестовые данные, не прошедшие проверку, будут представлены не сохраненным экземпляром модели.
-  # ToDo:
-  # + этот метод потенциально опасен при параллельном выполнении. Для улучшения ситуации следует самостоятельно вычислять идентификатор записи;
-  # + стоит добавить заполнение столбцов 'created_on' и 'updated_on' (см. rails fixtures).
   def cool
     return @value = @model if @model.invalid?
 
@@ -33,7 +30,6 @@ class Smeltery::Furnace::Model
 
     @klass.connection.insert_fixture columns, @klass.table_name
     @value = @klass.last # danger!
-    # @value.save
   end
 
   # Удаление модели.

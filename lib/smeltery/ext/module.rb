@@ -5,14 +5,10 @@ require 'smeltery'
 =end
 class Smeltery::Module < Module
   def method_missing(name, *label, &block)
-    # ToDo: Исключение?
-    # return if label.many? || block_given
-
     name = name.to_s
     label = label.first.to_s
 
     # Поиск файла, соотвествующего вызываемому методу. Например `.admin_users` может ссылаться на `admin_users.rb` или `admin/users.rb`.
-    # ToDo: найденный в результате файл также должен располагаться в требуемых каталогах.
     until path = Dir["#{Smeltery::Storage.dir}/**/#{name}.rb"].first
       name.include?('_') ? name = name.split('_', 2).last : break
     end
