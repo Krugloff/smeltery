@@ -6,6 +6,6 @@ class ActiveSupport::TestCase
   # models 'comments'
 
   setup do
-    ActiveRecord::Base.logger.debug(method_name)
+    ActiveRecord::Base.logger.debug( 'TEST:' + method_name )
   end
 end

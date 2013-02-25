@@ -10,20 +10,25 @@ class Smeltery::Storage < Array
   class_attribute 'cache'
   self.cache = Array.new
 
+  cattr_accessor 'dir'
+
   # Кеширование уже обработанных хранилищ.
-  def self.find_or_create(relative_path, path)
-    a_storage = cache.find { |storage| storage.path == relative_path }
+  def self.find_or_create(path)
+    a_storage = cache.find { |storage| storage.path == path }
     unless a_storage
-      a_storage = new( relative_path, File.read(path) ).ingots
+      a_storage = new(path).ingots
       cache << a_storage
     end
     a_storage
   end
 
-  def initialize(path, content)
+  def initialize(path)
     @path = path
-    @type = @path.tr('/', '_')
-    @content = content
+    @relative_path =  path.from( dir.length.next )
+                          .to( -File.extname(path).length.next )
+
+    @type = @relative_path.tr('/', '_')
+    @content = File.read(path)
     super()
   end
 
@@ -52,6 +57,6 @@ class Smeltery::Storage < Array
   end
 
   def model_klass
-    @path.classify.constantize
+    @relative_path.classify.constantize
   end
 end

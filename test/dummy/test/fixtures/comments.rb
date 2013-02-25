@@ -1,4 +1,4 @@
-@welcome = { title: 'Welcome',
-             body: 'Welcome to my blog!',
-             user: users('krugloff') }
+@valid =  { title: 'Welcome',
+            body: 'Welcome to my blog!',
+            user: users('krugloff') }
 

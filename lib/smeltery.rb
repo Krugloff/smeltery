@@ -85,7 +85,6 @@ module Smeltery
 
     # Инициализация требуемых тестовых данных.
     def handle_invoice
-      ActiveRecord::Base.logger.debug self.class.invoice.to_s
       self.class.invoice.values.each { |task| self.instance_exec(&task) }
     end
 
@@ -97,7 +96,6 @@ module Smeltery
 
     # Сохранение тестовых данных в виде моделей. Распространяется только на текущий тест.
     def models(*names)
-      ActiveRecord::Base.logger.debug 'Models:' + names.join(',')
       return remove_all_models if names.include? nil
       _storages(names).each { |ingots| Furnace.models(ingots) }
     end
@@ -114,12 +112,10 @@ module Smeltery
     end
 
     def _storages(names)
-      _files(names).map do |path|
-        ActiveRecord::Base.logger.debug path
-        relative_path = path.from( ingots_path.length.next )
-                            .to( -File.extname(path).length.next )
+      Storage.dir = ingots_path
 
-        storage = Storage.find_or_create relative_path, path
+      _files(names).map do |path|
+        storage = Storage.find_or_create(path)
         _define_accessor storage unless respond_to? storage.type
         storage
       end
@@ -127,7 +123,6 @@ module Smeltery
 
     def _files(names)
       names = names.map(&:to_s)
-      ActiveRecord::Base.logger.debug names.join(',')
       names = names.include?('all') ? '*' : names.join(',')
       Dir["#{ingots_path}/**/#{names}.rb"]
     end
@@ -136,13 +131,4 @@ module Smeltery
     def _define_accessor(storage)
       define_singleton_method(storage.type) { |label| storage.value(label) }
     end
-
-  # Позволяет управлять тестовыми данными непосредственно с помощью модуля. Используется для реализации связей между моделями.
-  module_function 'ingots',
-                  'models',
-                  'remove_all_models',
-                  '_remove_all_ingots',
-                  '_storages',
-                  '_files',
-                  '_define_accessor'
 end
