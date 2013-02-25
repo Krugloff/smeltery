@@ -34,19 +34,26 @@ module Smeltery
   autoload 'Module', 'smeltery/ext/module'
 
   extend ActiveSupport::Concern
-  # include TransactionalTests if defined? TransactionalTests
+  include TransactionalTests if defined? TransactionalTests
 
   module ClassMethods
     # Объявление тестовых данных, необходимых в виде ассоциативных массивов. Распространяется на все тесты. (см. handle_invoice).
     def ingots(*names)
       names.each { |name| invoice[name] = proc { ingots(name) } }
-      # Объявлять методы доступа здесь?
     end
 
     # Объявление тестовых данных, необходимых в виде моделей. Распространяется на все тесты. (см. handle_invoice).
     def models(*names)
       names.each { |name| invoice[name] = proc { models(name) } }
-      # Объявлять методы доступа здесь?
+    end
+
+    # Изменения, внесенные одним из наследников не должны влиять на других наследников или базовый класс -> поведение констант.
+    def invoice
+      @invoice ||= HashWithIndifferentAccess.new
+
+      @invoice =  superclass.respond_to?(:invoice) ?
+                  superclass.invoice.merge(@invoice) :
+                  @invoice
     end
 
     # Минимальная совместимость с rails fixtures.
@@ -70,21 +77,16 @@ module Smeltery
     class_attribute :ingots_path
     self.ingots_path = 'test/ingots'
 
-    class_attribute :invoice
-    self.invoice = HashWithIndifferentAccess.new
-
     setup :handle_invoice
     teardown :remove_all_models
-
-    include TransactionalTests if defined? TransactionalTests
   end
 
   private
 
     # Инициализация требуемых тестовых данных.
     def handle_invoice
-      ActiveRecord::Base.logger.debug invoice.to_s
-      invoice.values.each { |task| self.instance_eval task }
+      ActiveRecord::Base.logger.debug self.class.invoice.to_s
+      self.class.invoice.values.each { |task| self.instance_exec(&task) }
     end
 
     # Сохранение тестовых данных в виде ассоциативных массивов. Распространяется только на текущий тест.
@@ -136,11 +138,11 @@ module Smeltery
     end
 
   # Позволяет управлять тестовыми данными непосредственно с помощью модуля. Используется для реализации связей между моделями.
-  # module_function 'ingots',
-  #                 'models',
-  #                 'remove_all_models',
-  #                 '_remove_all_ingots',
-  #                 '_storages',
-  #                 '_files',
-  #                 '_define_accessor'
+  module_function 'ingots',
+                  'models',
+                  'remove_all_models',
+                  '_remove_all_ingots',
+                  '_storages',
+                  '_files',
+                  '_define_accessor'
 end
