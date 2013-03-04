@@ -48,11 +48,7 @@ module Smeltery
 
     # Изменения, внесенные одним из наследников не должны влиять на других наследников или базовый класс -> поведение констант.
     def invoice
-      @invoice ||= HashWithIndifferentAccess.new
-
-      @invoice =  superclass.respond_to?(:invoice) ?
-                  superclass.invoice.merge(@invoice) :
-                  @invoice
+      @invoice ||= superclass.invoice.dup rescue HashWithIndifferentAccess.new
     end
 
     # Минимальная совместимость с rails fixtures.
