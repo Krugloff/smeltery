@@ -115,7 +115,7 @@ module Smeltery
     def _files(names)
       names = names.map(&:to_s)
       names = names.include?('all') ? '*' : names.join(',')
-      Dir["#{ingots_path}/**/#{names}.rb"]
+      Dir["#{ingots_path}/**/{#{names}}.rb"]
     end
 
     # Идентификатор метода вычисляется с помощью расположения файла.
