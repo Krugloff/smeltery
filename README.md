@@ -105,6 +105,33 @@ And then execute:
                user: users('krugloff') }
 ```
 
+Осторожно! Преобразование тестовых данных в ассоциативные массивы может привести к удалению ассоциируемой модели. В этом случае для модели будет существовать только внешний ключ (например user_id).
+```ruby
+  # Тестовые данные
+  @valid =  { title: 'Welcome',
+              body: 'Welcome to my blog!',
+              user: users('krugloff') }
+
+  # Тест
+  class CommentTest < ActiveSupport::TestCase
+    models('comments')
+
+    test "belongs to user" do
+      assert respond_to?('comments'), Comment.count.to_s
+      assert !respond_to?('users')
+      assert comments('valid').user.persisted?
+    end
+
+    test 'user must be persisted' do
+      ingots :users
+      assert_nil comments('valid').user # -> true
+      assert comments('valid').user_id # -> true
+    end
+  end
+```
+
+Осторожно! Рекурсивный вызов тестовых данных может привести к бесконечному циклу.
+
 ### Транзакции
 
 По умолчанию тесты выполняются в составе отдельных транзакций. Тесты, реализующие транзакции самостоятельно, должны быть объявлены в явной форме с помощью `::uses_transaction(*methods)`.

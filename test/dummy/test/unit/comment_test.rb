@@ -8,4 +8,14 @@ class CommentTest < ActiveSupport::TestCase
     assert !respond_to?('users')
     assert comments('valid').user.persisted?
   end
+
+  test 'user must be persisted' do
+    assert comments('valid').user.persisted?
+  end
+
+  test 'deleted user' do
+    ingots :users
+    assert_nil comments('valid').user
+    assert comments('valid').user_id
+  end
 end
