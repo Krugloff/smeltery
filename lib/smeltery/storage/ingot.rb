@@ -3,7 +3,7 @@
 # Представление тестовых данных в виде ассоцитивного массива. Используется по умолчанию.
 class Smeltery::Storage::Ingot
   def initialize(label, value)
-    @label = label
+    @label = label.to_sym
     @value = value
   end
 

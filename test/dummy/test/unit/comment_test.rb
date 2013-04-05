@@ -18,4 +18,10 @@ class CommentTest < ActiveSupport::TestCase
     assert_nil comments('valid').user
     assert comments('valid').user_id
   end
+
+  test 'symbolic labels' do
+    ingots :users
+    assert_nil comments(:valid).user
+    assert comments(:valid).user_id
+  end
 end

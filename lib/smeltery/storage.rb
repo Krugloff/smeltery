@@ -54,7 +54,7 @@ class Smeltery::Storage < Array
 
   # Поиск объекта по метке.
   def value(label)
-    find { |el| el.label == label }.value
+    find { |el| el.label == label.to_sym }.value
   end
 
   def model_klass
