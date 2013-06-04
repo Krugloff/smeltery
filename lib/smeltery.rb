@@ -1,6 +1,5 @@
 #encoding: utf-8
 
-require 'smeltery/version'
 require 'smeltery/rails/railtie' if defined?(Rails)
 require 'smeltery/rails/transactional_tests' if defined?(ActiveRecord)
 require 'smeltery/ext/module'
