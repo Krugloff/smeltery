@@ -23,6 +23,7 @@ class Smeltery::Storage < Array
     a_storage
   end
 
+  # Для тестовых данных в вложенных каталогах тип будет содержать название каталога и название файла, разделенные знаком подчеркивания.
   def initialize(path)
     @path = path
     @relative_path =  path.from( dir.length.next )
@@ -33,7 +34,7 @@ class Smeltery::Storage < Array
     super()
   end
 
-  # type используется для определения методов доступа к хранилищу.
+  # Type используется для определения методов доступа к хранилищу.
   attr_reader :type, :path
 
   # Вычисление тестовых данных. На данный момент поддерживается только один формат:
