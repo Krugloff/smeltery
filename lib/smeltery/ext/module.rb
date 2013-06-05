@@ -1,9 +1,7 @@
-require 'smeltery'
-
 =begin
 Для обработки связей между моделями. Мне не нравится это решение, но ничего лучше я пока придумать не смог.
 =end
-class Smeltery::Module < Module
+module Smeltery class Module < Module
   def self.models(name)
     name = name.to_s.pluralize
     # Поиск файла, соотвествующего вызываемому методу. Например `.admin_users` может ссылаться на `admin_users.rb` или `admin/users.rb`.
@@ -19,4 +17,4 @@ class Smeltery::Module < Module
     label = label.first.to_s
     self.class.models(name).value(label)
   end
-end
+end end
