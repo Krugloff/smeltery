@@ -37,22 +37,16 @@ class Smeltery::Furnace::Model
     @value.delete if @value
     model = @model
     @ingot.define_singleton_method(:to_model) do
-      # self.values.find
       # Найти ключи, ассоциированные с несохраненными моделями.
       # И преобразовать соответствующие тестовые данные в модели.
       # А затем извлечь необходимую модель.
       ingot = self.value
 
-      keys = ingot.keys.select do |key|
-        ingot[key].respond_to?(:destroyed?) && ingot[key].destroyed?
+      ingot.keys.each do |key|
+        if ingot[key].respond_to?(:destroyed?) && ingot[key].destroyed?
+          Smeltery::Module.models key
+        end
       end
-
-      # Rails.logger.debug(keys.inspect)
-      keys.each do |key|
-        Smeltery::Module.models(key)#.find { |model| model.value.id =  }
-        # Rails.logger.debug ingot[key].inspect
-      end
-
       model
     end
     @ingot
