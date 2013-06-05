@@ -4,7 +4,7 @@
 module Smeltery class Module < Module
   def self.models(name)
     name = name.to_s.pluralize
-    # Поиск файла, соотвествующего вызываемому методу. Например `.admin_users` может ссылаться на `admin_users.rb` или `admin/users.rb`.
+    # Поиск файла, соотвествующего вызываемому методу. Например `.user_comments` может ссылаться на `user_comments.rb` или `user/comments.rb`.
     until path = Dir["#{Smeltery::Storage.dir}/**/#{name}.rb"].first
       name.include?('_') ? name = name.split('_', 2).last : break
     end
