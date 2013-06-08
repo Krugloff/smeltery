@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = 'smeltery'
-  spec.version       = '0.2.5'
+  spec.version       = '0.2.6'
   spec.summary       = %{Simple organizing test data in ActiveRecord.}
   spec.description   = %{Smeltery allow organize test data in Ruby files as instance variables associated with attribute's hash.}
 
