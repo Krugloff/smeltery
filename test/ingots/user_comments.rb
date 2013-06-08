@@ -1,0 +1,1 @@
+@valid = { body: "This is user's comment" }
